@@ -1,6 +1,17 @@
 <!doctype html>
 <html lang="es">
 <head>
+<!-- Google Analytics 4 · Alianzas de Villanos -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-8TV63EKQK6"></script>
+<script>
+window.dataLayer = window.dataLayer || [];
+function gtag(){dataLayer.push(arguments);}
+gtag('js', new Date());
+gtag('config', 'G-8TV63EKQK6');
+function trackEvent(name, params={}){
+  if(typeof gtag === 'function') gtag('event', name, params);
+}
+</script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Alianzas de Villanos | Menopausia Dichosa</title>
@@ -178,5 +189,21 @@ if(p){
 go(5)}
 function openWhatsApp(){const allies=selected.filter(v=>v!==dominant);let msg=`Hola Mony 🌷 Ya hice mi mapa de Villanos.`;if(attended&&city)msg+=` Estuve en la sesión de Villanos de la Menopausia en ${city}.`;msg+=` Mi villano principal es ${dominant}`;if(allies.length)msg+=` y también marqué ${allies.join(', ')}`;msg+=`. Quiero saber cómo empezar a desarmar esta alianza.`;window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`,'_blank')}
 function restart(){attended=null;city="";selected=[];dominant=null;document.getElementById('city').value='';document.getElementById('continue1').disabled=true;document.getElementById('cityField').style.display='none';renderVillains();go(1)}
+
+// Eventos personalizados para Google Analytics 4
+const originalGo=go;
+go=function(n){if(n===2)trackEvent('map_start');originalGo(n)};
+const originalSetAttended=setAttended;
+setAttended=function(v){trackEvent('attendance_selected',{attended:v?'yes':'no'});originalSetAttended(v)};
+const originalSetCity=setCity;
+setCity=function(v){if(v)trackEvent('session_city_selected',{session_city:v});originalSetCity(v)};
+const originalToDominant=toDominant;
+toDominant=function(){if(selected.length)trackEvent('villains_confirmed',{villain_count:selected.length,villains:selected.join('|').slice(0,100)});originalToDominant()};
+const originalShowResult=showResult;
+showResult=function(){if(dominant){const allies=selected.filter(v=>v!==dominant);trackEvent('map_complete',{dominant_villain:dominant,ally_count:allies.length,allies:allies.join('|').slice(0,100),attended:attended?'yes':'no',session_city:city||'not_selected'})}originalShowResult()};
+const originalOpenWhatsApp=openWhatsApp;
+openWhatsApp=function(){trackEvent('whatsapp_click',{dominant_villain:dominant||'not_selected',villain_count:selected.length,session_city:city||'not_selected'});originalOpenWhatsApp()};
+const originalRestart=restart;
+restart=function(){trackEvent('map_restart');originalRestart()};
 </script>
 </body></html>
