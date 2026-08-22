@@ -33,7 +33,7 @@ function ambassadorId(){
   const s=storage();
   let id=s.getItem('md_ambassador_id');
   if(!id){
-    id=(crypto&&crypto.randomUUID)?crypto.randomUUID():'emb-'+Date.now()+'-'+Math.random().toString(36).slice(2);
+    id=(window.crypto&&crypto.randomUUID)?crypto.randomUUID():'emb-'+Date.now()+'-'+Math.random().toString(36).slice(2);
     s.setItem('md_ambassador_id',id);
   }
   return id;
@@ -84,7 +84,20 @@ function wire(){
     const doc=iframe.contentDocument;
     doc.addEventListener('input',schedule,true);
     doc.addEventListener('change',schedule,true);
-    doc.addEventListener('click',()=>{setTimeout(schedule,250)},true);
+    doc.addEventListener('click',(ev)=>{
+      const btn=ev.target.closest?ev.target.closest('#next2,#next4'):null;
+      if(btn){
+        const s=storage();
+        const current=s.getItem('md_level')||'';
+        if(btn.id==='next2'&&current==='conocer') s.setItem('md_level','acompanar');
+        if(btn.id==='next4'&&(current==='conocer'||current==='acompanar')) s.setItem('md_level','crecer');
+      }
+      setTimeout(schedule,250);
+    },true);
+    const stop2=doc.getElementById('stop2');
+    const stop4=doc.getElementById('stop4');
+    if(stop2&&!stop2.dataset.note){stop2.dataset.note='1';stop2.insertAdjacentHTML('beforeend','<p style="margin:8px 0 0">Si quieres seguir avanzando, pulsa <b>Ir a ACOMPAÑA</b> y ampliaremos tu ruta.</p>');}
+    if(stop4&&!stop4.dataset.note){stop4.dataset.note='1';stop4.insertAdjacentHTML('beforeend','<p style="margin:8px 0 0">Si quieres seguir avanzando, pulsa <b>Ir a ACTÍVATE</b> y ampliaremos tu ruta.</p>');}
     setTimeout(()=>postProgress(true),800);
   }catch(e){}
 }
