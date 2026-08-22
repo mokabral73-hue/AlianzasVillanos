@@ -26,7 +26,6 @@ function storage(){return iframe.contentWindow.localStorage;}
 function resetAmbassadorProgress(){
   try{
     const s=storage();
-    /* Reinicia solamente la ruta. El entrenamiento ya desbloqueado se conserva. */
     ['md_profile','md_level','md_station','md_data'].forEach(k=>s.removeItem(k));
   }catch(e){}
 }
@@ -46,53 +45,91 @@ function addTrainingScreen(doc,id,icon,title,html){
   sec.innerHTML='<div class="top"><div class="topin"><button class="btn secondary" onclick="show(\'training\')">← Mi Entrenamiento</button><div class="title">'+icon+' '+title+'</div></div></div><div class="panel"><div class="box">'+html+'</div></div>';
   doc.body.appendChild(sec);
 }
+function ensureExtraTraining(doc,menu){
+  const defs=[
+    ['allianceTrainingCard','🤝','Del Villano a la Alianza','ACOMPAÑA · Convierte lo identificado en un siguiente paso','allianceGuide',3],
+    ['activateTrainingCard','🌷','Activa e invita','ACTÍVATE · Cómo invitar con claridad y dar seguimiento','activateGuide',5],
+    ['multiplyTrainingCard','✨','Multiplica la causa','MULTIPLICA · Detecta y acompaña nuevas Embajadoras','multiplyGuide',6]
+  ];
+  defs.forEach(d=>{if(!doc.getElementById(d[0])){const a=doc.createElement('a');a.id=d[0];a.className='menuCard';a.href='#';a.dataset.target=d[4];a.dataset.req=d[5];a.innerHTML=d[1]+'<b>'+d[2]+'</b><span>'+d[3]+'</span>';menu.appendChild(a)}});
+  addTrainingScreen(doc,'allianceGuide','🤝','Del Villano a la Alianza','<h2>Del Villano a la Alianza</h2><p>El resultado no es el final: es el inicio de un siguiente paso.</p><div class="mission"><b>1. Escucha.</b> ¿Qué cambio le preocupa más?<br><b>2. Identifica.</b> Ayúdala a reconocer el Villano principal.<br><b>3. Conecta.</b> Muéstrale la Alianza correspondiente.<br><b>4. Aterriza.</b> Elijan una acción sencilla y realista.<br><b>5. Da seguimiento.</b> Pregunta cómo le fue y qué necesita después.</div><div class="callout"><b>Como Embajadora:</b> informa, escucha, orienta y acompaña. No diagnostiques, prescribas ni sustituyas la valoración médica.</div>');
+  addTrainingScreen(doc,'activateGuide','🌷','Activa e invita','<h2>Activa e invita</h2><p>Invitar no es presionar. Es abrir una puerta clara para que otra mujer decida.</p><div class="mission"><b>Conecta primero:</b> parte de lo que ella ya expresó.<br><b>Haz una invitación concreta:</b> explica a qué la estás invitando y para qué.<br><b>Da opción:</b> deja que decida sin insistencia.<br><b>Da seguimiento:</b> si mostró interés, acuerden el siguiente paso.</div><p><b>Una buena invitación deja claridad, no presión.</b></p>');
+  addTrainingScreen(doc,'multiplyGuide','✨','Multiplica la causa','<h2>Multiplica la causa</h2><p>Multiplicar significa reconocer a quien muestra interés genuino por acompañar a otras mujeres.</p><div class="mission"><b>Observa señales:</b> comparte información, invita a otras, pregunta cómo ayudar o quiere aprender más.<br><br><b>Conversa:</b> explica qué hace una Embajadora y qué no hace.<br><br><b>Invítala:</b> si decide participar, llévala al inicio de su propia Ruta de Activación.<br><br><b>Acompaña:</b> ayúdala con sus primeros pasos.</div><p><b>La meta no es acumular nombres: es desarrollar mujeres capaces de acompañar con responsabilidad.</b></p>');
+}
 function enhanceTraining(){try{
   const doc=iframe.contentDocument,unlocked=maxUnlocked();
   const training=doc.getElementById('training');if(!training)return;
   const menu=training.querySelector('.menu');if(!menu)return;
-  const cards=[...menu.querySelectorAll('.menuCard')];
-  const requirements=[1,2,2,4];
-  cards.forEach((c,i)=>{
-    const req=requirements[i]||1;
-    c.style.opacity=unlocked>=req?'1':'.48';
-    c.style.pointerEvents=unlocked>=req?'auto':'none';
-    if(unlocked<req&&!c.querySelector('.locknote')){const n=doc.createElement('span');n.className='locknote';n.textContent='🔒 Se habilita conforme avances en tu Ruta';c.appendChild(n)}
+  const base=[...menu.querySelectorAll('.menuCard')];
+  const baseReq=[1,2,2,4];
+  base.forEach((c,i)=>{if(!c.dataset.req)c.dataset.req=String(baseReq[i]||1);if(!c.dataset.target){const oc=c.getAttribute('onclick')||'';const m=oc.match(/show\('([^']+)'\)/);if(m)c.dataset.target=m[1]}});
+  ensureExtraTraining(doc,menu);
+  [...menu.querySelectorAll('.menuCard')].forEach(c=>{
+    const req=parseInt(c.dataset.req||'1',10),target=c.dataset.target||'';
+    const open=unlocked>=req;
+    c.style.opacity=open?'1':'.42';
+    c.style.pointerEvents=open?'auto':'none';
+    c.style.filter=open?'none':'grayscale(.85)';
+    c.setAttribute('aria-disabled',open?'false':'true');
+    const old=c.querySelector('.locknote');if(old)old.remove();
+    if(!open){const n=doc.createElement('span');n.className='locknote';n.textContent='🔒 Se habilita al avanzar en tu Ruta';c.appendChild(n)}
+    else if(target){c.onclick=(ev)=>{ev.preventDefault();iframe.contentWindow.show(target);return false}}
   });
-  if(!doc.getElementById('allianceTrainingCard')){
-    const a=doc.createElement('a');a.id='allianceTrainingCard';a.className='menuCard';a.href='#';
-    a.innerHTML='🤝<b>Del Villano a la Alianza</b><span>ACOMPAÑA · Convierte lo identificado en un siguiente paso</span>';
-    if(unlocked<3){a.style.opacity='.48';a.style.pointerEvents='none';a.innerHTML+='<span>🔒 Se habilita al llegar a ACOMPAÑA</span>'}
-    else a.onclick=()=>{iframe.contentWindow.show('allianceGuide');return false};menu.appendChild(a);
-  }
-  if(!doc.getElementById('multiplyTrainingCard')){
-    const a=doc.createElement('a');a.id='multiplyTrainingCard';a.className='menuCard';a.href='#';
-    a.innerHTML='✨<b>Multiplica la causa</b><span>ACTÍVATE · MULTIPLICA · Detecta y acompaña nuevas Embajadoras</span>';
-    if(unlocked<5){a.style.opacity='.48';a.style.pointerEvents='none';a.innerHTML+='<span>🔒 Se habilita al llegar a ACTÍVATE</span>'}
-    else a.onclick=()=>{iframe.contentWindow.show('multiplyGuide');return false};menu.appendChild(a);
-  }
-  addTrainingScreen(doc,'allianceGuide','🤝','Del Villano a la Alianza','<h2>Del Villano a la Alianza</h2><p>El resultado no es el final de la conversación: es el punto de partida para acompañar.</p><div class="mission"><b>1. Escucha.</b> Pregunta qué cambio le preocupa más.<br><b>2. Identifica.</b> Ayúdala a reconocer el Villano que más está interfiriendo hoy.<br><b>3. Conecta.</b> Muéstrale la Alianza y las herramientas educativas relacionadas.<br><b>4. Aterriza.</b> Elijan un siguiente paso sencillo y realista.<br><b>5. Da seguimiento.</b> Pregunta cómo le fue y qué necesita después.</div><div class="callout"><b>Tu papel como Embajadora:</b> informar, escuchar, orientar y acompañar. No diagnosticar, prescribir ni sustituir la valoración médica.</div>');
-  addTrainingScreen(doc,'multiplyGuide','✨','Multiplica la causa','<h2>Multiplica la causa</h2><p>Multiplicar no significa presionar a todas para ser Embajadoras. Significa reconocer a quien muestra interés genuino por acompañar a otras mujeres.</p><div class="mission"><b>Observa señales:</b> comparte información, pregunta cómo ayudar, invita a otras mujeres o quiere aprender más.<br><br><b>Conversa:</b> cuéntale qué hace una Embajadora y qué no hace.<br><br><b>Invítala:</b> si decide participar, llévala al inicio de su propia Ruta de Activación.<br><br><b>Acompaña:</b> no la sueltes después de invitarla; ayúdala a dar sus primeros pasos.</div><p><b>La meta no es acumular nombres. Es desarrollar mujeres capaces de acompañar con responsabilidad.</b></p>');
 }catch(e){}}
 function addHistamineResource(){try{
   const doc=iframe.contentDocument,share=doc.getElementById('share');if(!share||doc.getElementById('histamineShare'))return;
   const panel=share.querySelector('.panel')||share;
   const card=doc.createElement('div');card.id='histamineShare';card.className='resource';
-  card.innerHTML='<h3>🌿 Diario de Histamina</h3><p>Recurso para compartir con una mujer que necesita observar alimentos, síntomas y posibles patrones relacionados con la histamina.</p><a class="btn" href="https://diario-histamina.menopausiadichosa.chatgpt.site" target="_blank" rel="noopener">ABRIR DIARIO DE HISTAMINA →</a>';
+  card.innerHTML='<h3>🌿 Diario de Histamina</h3><p>Para observar alimentos, síntomas y posibles patrones relacionados con la histamina.</p><a class="btn" href="https://diario-histamina.menopausiadichosa.chatgpt.site" target="_blank" rel="noopener">ABRIR DIARIO DE HISTAMINA →</a>';
   panel.appendChild(card);
 }catch(e){}}
-function installRecognition(){try{const win=iframe.contentWindow,doc=iframe.contentDocument;win.showRecognition=function(){doc.querySelectorAll('.station').forEach(x=>x.classList.remove('active'));const recognition=doc.getElementById('recognition');recognition.classList.add('active');const nombre=(doc.getElementById('nombre')&&doc.getElementById('nombre').value)||'Embajadora';recognition.innerHTML='<div class="box" style="text-align:center;max-width:760px;margin:18px auto;border:2px solid #8fa578"><div class="tulip">🌷</div><h2>¡Felicidades, '+nombre+'!</h2><p style="font-size:18px;margin-bottom:4px"><b>Has completado tu Ruta de Activación como</b></p><h2 style="color:#6f7b5a;margin-top:4px">Embajadora de Menopausia Dichosa®</h2><p>Has recorrido las seis estaciones y ya tienes herramientas para llevar la causa a otras mujeres.</p><div style="margin:22px 0;padding:15px;border-radius:16px;background:#f4f7ef;font-weight:800;line-height:1.9">DESCUBRE ✓ → CONECTA ✓ → ACOMPAÑA ✓ → COMPARTE ✓ → ACTÍVATE ✓ → MULTIPLICA ✓</div><div class="mission" style="text-align:center"><b>💗 Tu ruta no termina aquí.<br>Ahora comienza tu impacto como Embajadora.</b></div><button class="btn" type="button" onclick="show(\'home\')">VOLVER AL CENTRO DE EMBAJADORAS →</button><button class="btn secondary" type="button" style="margin-left:8px" onclick="parent.location.href=parent.location.pathname+\'?inicio=nuevo\'">ELEGIR UN NUEVO OBJETIVO →</button></div>';storage().setItem('md_station','6');storage().setItem('md_training_unlocked','6');iframe.contentWindow.scrollTo(0,0)}}catch(e){}}
-function goalModal(nextLevel,nextStation,title,text){try{const doc=iframe.contentDocument;const old=doc.getElementById('goalChangeModal');if(old)old.remove();const overlay=doc.createElement('div');overlay.id='goalChangeModal';overlay.style.cssText='position:fixed;inset:0;background:rgba(55,58,52,.48);z-index:9999;display:flex;align-items:center;justify-content:center;padding:18px';overlay.innerHTML='<div style="background:#fffdf9;max-width:560px;width:100%;border-radius:24px;padding:24px;box-shadow:0 18px 55px rgba(0,0,0,.22);text-align:center"><div style="font-size:40px">🌷</div><div style="font-size:12px;letter-spacing:.12em;font-weight:900;color:#6f7b5a">TU RUTA, TU DECISIÓN</div><h2 style="margin-bottom:8px">'+title+'</h2><p style="font-size:17px;color:#5f655d">'+text+'</p><div style="background:#f4f7ef;border-radius:16px;padding:14px;margin:18px 0"><b>Al continuar, estás eligiendo ampliar el objetivo que seleccionaste al comenzar.</b></div><button id="keepGoal" type="button" style="border:0;background:#ece6dd;color:#3f463c;font-weight:900;border-radius:999px;padding:12px 17px;margin:5px;cursor:pointer">POR AHORA ME QUEDO AQUÍ</button><button id="expandGoal" type="button" style="border:0;background:#6f7b5a;color:#fff;font-weight:900;border-radius:999px;padding:12px 17px;margin:5px;cursor:pointer">SÍ, QUIERO AMPLIAR MI OBJETIVO →</button></div>';doc.body.appendChild(overlay);doc.getElementById('keepGoal').onclick=()=>overlay.remove();doc.getElementById('expandGoal').onclick=()=>{storage().setItem('md_level',nextLevel);overlay.remove();iframe.contentWindow.goStation(nextStation);setTimeout(()=>{maxUnlocked();enhanceTraining()},100)}}catch(e){}}
+const suggestions={
+  1:{title:'Villanos de la Menopausia',target:'villainsGuide',text:'Antes de avanzar, conoce cómo explicar los Villanos de forma sencilla y responsable.'},
+  2:{title:'Tu historia + Escuchar y acompañar',target:'speechGuide',text:'CONECTA necesita dos habilidades: contar tu historia con naturalidad y aprender a escuchar.'},
+  3:{title:'Del Villano a la Alianza',target:'allianceGuide',text:'Ahora que acompañas a otras mujeres, aprende a convertir lo identificado en un siguiente paso.'},
+  4:{title:'Mi primera Sesión de Villanos',target:'sessionGuide',text:'Ya estás en COMPARTE. Revisa cómo preparar y conducir tu primera sesión.'},
+  5:{title:'Activa e invita',target:'activateGuide',text:'En ACTÍVATE, practica una invitación clara, respetuosa y con seguimiento.'},
+  6:{title:'Multiplica la causa',target:'multiplyGuide',text:'En MULTIPLICA, aprende a reconocer y acompañar a una posible nueva Embajadora.'}
+};
+function showRouteSuggestion(n){try{
+  const doc=iframe.contentDocument,stationId=['','descubre','conecta','acompana','comparte','activate','multiplica'][n];
+  const st=doc.getElementById(stationId);if(!st)return;
+  const box=st.querySelector('.box');if(!box)return;
+  const old=box.querySelector('.routeTrainingSuggest');if(old)old.remove();
+  const s=suggestions[n];if(!s)return;
+  const d=doc.createElement('div');d.className='support routeTrainingSuggest';d.style.marginTop='14px';
+  d.innerHTML='<div class="supportTitle">🎓 ENTRENAMIENTO RECOMENDADO PARA ESTE PASO</div><b style="font-size:18px">'+s.title+'</b><p style="margin:7px 0 12px">'+s.text+'</p><button type="button" class="btn routeTrainBtn">VER ENTRENAMIENTO →</button>';
+  const firstAction=box.querySelector('.field,.metric,.person,#people');
+  if(firstAction)box.insertBefore(d,firstAction);else box.prepend(d);
+  d.querySelector('.routeTrainBtn').onclick=()=>iframe.contentWindow.show(s.target);
+}catch(e){}}
+function installRouteHooks(){try{
+  const win=iframe.contentWindow;
+  if(win.__mdRouteHooked)return;win.__mdRouteHooked=true;
+  const original=win.goStation;
+  win.goStation=function(n){
+    const before=parseInt(storage().getItem('md_station')||'0',10)||0;
+    original.call(win,n);
+    const after=parseInt(storage().getItem('md_station')||'0',10)||0;
+    if(after!==before||after===n){storage().setItem('md_training_unlocked',String(Math.max(maxUnlocked(),after)));enhanceTraining();showRouteSuggestion(after)}
+  };
+  const originalShow=win.show;
+  win.show=function(id){originalShow.call(win,id);if(id==='training')enhanceTraining();if(id==='share')addHistamineResource()};
+}catch(e){}}
+function installRecognition(){try{const doc=iframe.contentDocument;iframe.contentWindow.showRecognition=function(){doc.querySelectorAll('.station').forEach(x=>x.classList.remove('active'));const recognition=doc.getElementById('recognition');recognition.classList.add('active');const nombre=(doc.getElementById('nombre')&&doc.getElementById('nombre').value)||'Embajadora';recognition.innerHTML='<div class="box" style="text-align:center;max-width:760px;margin:18px auto;border:2px solid #8fa578"><div class="tulip">🌷</div><h2>¡Felicidades, '+nombre+'!</h2><p style="font-size:18px;margin-bottom:4px"><b>Has completado tu Ruta de Activación como</b></p><h2 style="color:#6f7b5a;margin-top:4px">Embajadora de Menopausia Dichosa®</h2><p>Has recorrido las seis estaciones y ya tienes herramientas para llevar la causa a otras mujeres.</p><div style="margin:22px 0;padding:15px;border-radius:16px;background:#f4f7ef;font-weight:800;line-height:1.9">DESCUBRE ✓ → CONECTA ✓ → ACOMPAÑA ✓ → COMPARTE ✓ → ACTÍVATE ✓ → MULTIPLICA ✓</div><div class="mission" style="text-align:center"><b>💗 Tu ruta no termina aquí.<br>Ahora comienza tu impacto como Embajadora.</b></div><button class="btn" type="button" onclick="show(\'home\')">VOLVER AL CENTRO DE EMBAJADORAS →</button><button class="btn secondary" type="button" style="margin-left:8px" onclick="parent.location.href=parent.location.pathname+\'?inicio=nuevo\'">ELEGIR UN NUEVO OBJETIVO →</button></div>';storage().setItem('md_station','6');storage().setItem('md_training_unlocked','6');iframe.contentWindow.scrollTo(0,0)}}catch(e){}}
+function goalModal(nextLevel,nextStation,title,text){try{const doc=iframe.contentDocument;const old=doc.getElementById('goalChangeModal');if(old)old.remove();const overlay=doc.createElement('div');overlay.id='goalChangeModal';overlay.style.cssText='position:fixed;inset:0;background:rgba(55,58,52,.48);z-index:9999;display:flex;align-items:center;justify-content:center;padding:18px';overlay.innerHTML='<div style="background:#fffdf9;max-width:560px;width:100%;border-radius:24px;padding:24px;box-shadow:0 18px 55px rgba(0,0,0,.22);text-align:center"><div style="font-size:40px">🌷</div><div style="font-size:12px;letter-spacing:.12em;font-weight:900;color:#6f7b5a">TU RUTA, TU DECISIÓN</div><h2 style="margin-bottom:8px">'+title+'</h2><p style="font-size:17px;color:#5f655d">'+text+'</p><div style="background:#f4f7ef;border-radius:16px;padding:14px;margin:18px 0"><b>Al continuar, estás eligiendo ampliar el objetivo que seleccionaste al comenzar.</b></div><button id="keepGoal" type="button" style="border:0;background:#ece6dd;color:#3f463c;font-weight:900;border-radius:999px;padding:12px 17px;margin:5px;cursor:pointer">POR AHORA ME QUEDO AQUÍ</button><button id="expandGoal" type="button" style="border:0;background:#6f7b5a;color:#fff;font-weight:900;border-radius:999px;padding:12px 17px;margin:5px;cursor:pointer">SÍ, QUIERO AMPLIAR MI OBJETIVO →</button></div>';doc.body.appendChild(overlay);doc.getElementById('keepGoal').onclick=()=>overlay.remove();doc.getElementById('expandGoal').onclick=()=>{storage().setItem('md_level',nextLevel);overlay.remove();iframe.contentWindow.goStation(nextStation)}}catch(e){}}
 function updateBoundaryButtons(){try{const doc=iframe.contentDocument,s=storage(),level=s.getItem('md_level')||'';const b2=doc.getElementById('next2'),b4=doc.getElementById('next4');if(b2)b2.textContent=level==='conocer'?'CAMBIAR MI OBJETIVO Y SEGUIR →':'Ir a ACOMPAÑA →';if(b4)b4.textContent=(level==='conocer'||level==='acompanar')?'CAMBIAR MI OBJETIVO Y SEGUIR →':'Ir a ACTÍVATE →'}catch(e){}}
 function forceBeforeStart(){try{const doc=iframe.contentDocument;iframe.contentWindow.show('route');doc.getElementById('routeStart').style.display='block';doc.querySelectorAll('.station').forEach(x=>x.classList.remove('active'));doc.querySelectorAll('input[name=nivel]').forEach(x=>x.checked=false);const b=doc.getElementById('startBtn');if(b)b.disabled=true;iframe.contentWindow.scrollTo(0,0)}catch(e){}}
 function wire(){try{
   if(freshStart){freshStart=false;resetAmbassadorProgress();history.replaceState({},'',location.pathname+'?inicio=listo');iframe.contentWindow.location.replace('app.html?fresh='+Date.now());return}
-  const doc=iframe.contentDocument;installRecognition();addHistamineResource();enhanceTraining();
+  const doc=iframe.contentDocument;installRecognition();installRouteHooks();addHistamineResource();enhanceTraining();
+  const current=parseInt(storage().getItem('md_station')||'0',10)||0;if(current)showRouteSuggestion(current);
   if(params.get('inicio')==='nuevo'||location.search.indexOf('inicio=listo')>-1)forceBeforeStart();
   const stop2=doc.getElementById('stop2'),stop4=doc.getElementById('stop4');
   if(stop2)stop2.innerHTML='<b>🌱 Cumpliste el objetivo que elegiste al comenzar.</b><p style="margin:8px 0 0">Puedes quedarte aquí por ahora. Si quieres continuar a ACOMPAÑA, primero te pediremos confirmar que deseas ampliar tu objetivo.</p>';
   if(stop4)stop4.innerHTML='<b>💗 Cumpliste el objetivo que elegiste al comenzar.</b><p style="margin:8px 0 0">Puedes quedarte aquí por ahora. Si quieres continuar a ACTÍVATE, primero te pediremos confirmar que deseas ampliar tu objetivo.</p>';
-  doc.addEventListener('click',(ev)=>{const btn=ev.target.closest?ev.target.closest('#next2,#next4'):null;if(btn){const current=storage().getItem('md_level')||'';if(btn.id==='next2'&&current==='conocer'){ev.preventDefault();ev.stopImmediatePropagation();goalModal('acompanar',3,'Ya cumpliste tu primer objetivo','Elegiste conocer y aprender. Para pasar a ACOMPAÑA vas a asumir un nuevo objetivo: aprender a acompañar a otras mujeres.');return}if(btn.id==='next4'&&(current==='conocer'||current==='acompanar')){ev.preventDefault();ev.stopImmediatePropagation();goalModal('crecer',5,'Estás lista para decidir tu siguiente nivel','Hasta aquí cumpliste tu objetivo de acompañamiento. Para pasar a ACTÍVATE vas a elegir involucrarte activamente y ayudar a crecer la causa.');return}}setTimeout(()=>{maxUnlocked();enhanceTraining()},120)},true);
-  doc.addEventListener('change',()=>setTimeout(()=>{updateBoundaryButtons();maxUnlocked();enhanceTraining()},80),true);updateBoundaryButtons();
+  doc.addEventListener('click',(ev)=>{const btn=ev.target.closest?ev.target.closest('#next2,#next4'):null;if(!btn)return;const currentLevel=storage().getItem('md_level')||'';if(btn.id==='next2'&&currentLevel==='conocer'){ev.preventDefault();ev.stopImmediatePropagation();goalModal('acompanar',3,'Ya cumpliste tu primer objetivo','Elegiste conocer y aprender. Para pasar a ACOMPAÑA vas a asumir un nuevo objetivo: aprender a acompañar a otras mujeres.');return}if(btn.id==='next4'&&(currentLevel==='conocer'||currentLevel==='acompanar')){ev.preventDefault();ev.stopImmediatePropagation();goalModal('crecer',5,'Estás lista para decidir tu siguiente nivel','Hasta aquí cumpliste tu objetivo de acompañamiento. Para pasar a ACTÍVATE vas a elegir involucrarte activamente y ayudar a crecer la causa.');return}},true);
+  doc.addEventListener('change',()=>setTimeout(updateBoundaryButtons,60),true);updateBoundaryButtons();
 }catch(e){}}
 iframe.addEventListener('load',wire);
 </script>
